@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# $Id: throttle-job-manager,v 1.15 2003-09-11 16:26:50-07 kst Exp $
+# $Id: throttle-job-manager,v 1.16 2003-09-11 16:36:08-07 kst Exp $
 # $Source: /home/kst/CVS_smov/tools/throttle-job-manager/throttle-job-manager,v $
 
 ########################################################################
@@ -62,13 +62,16 @@ sub Handler($);
 $| = 1;
 
 my $Program_Name = File::Basename::basename $0;
+my $Version = "0.1";
 
 my $User_Opt = { max      => 10,
                  interval => 60,
                  name     => 'globus-job-manager' };
-my @Opts = ( $User_Opt, qw( help max=i interval=i quiet! debugging ) );
+my @Opts = ( $User_Opt, qw( help version max=i interval=i quiet! debugging ) );
 Getopt::Long::GetOptions @Opts or Usage;
 Usage if $User_Opt->{help};
+
+die "throttle-job-manager version $Version\n" if $User_Opt->{version};
 
 die "$Program_Name: No directory /proc\n" if not -d "/proc";
 die "$Program_Name: No Linux-style /proc directory\n"
@@ -340,6 +343,7 @@ sub Usage(@) {
     print <<"EOF";
 Usage: $Program_Name [options]
     -help               Display this message and exit
+    -version            Display version and exit
     -max num            Maximum number of running processes; default is 10
     -interval seconds   Seconds between queries; default is 60
     -name string        Name of executable to throttle;
