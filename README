@@ -1,0 +1,19 @@
+# $Id: README,v 1.1 2003-09-11 17:25:21-07 kst Exp $
+# $Source: /home/kst/CVS_smov/tools/throttle-job-manager/README,v $
+
+This is throttle-job-manager release 0.1.
+
+The throttle-job-manager command is a Perl script that works around
+a Globus performance problem by throttling the number of active
+globus-job-manager processes running on a system.  It works only on
+Linux.  See <http://bugzilla.globus.org/bugzilla/show_bug.cgi?id=1142>
+for a description of the problem.  See the man page for details on
+the throttle-job-manager command.
+
+There is no configuration or installation script.
+
+"throttle-job-manager" is the command itself; install it in an
+appropriate directory, adjust the "#!/usr/bin/perl" line if necessary
+to reflect the location of your Perl executable, and run it as root.
+
+"throttle-job-manager.1" is the man page.
