@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# $Id: throttle-job-manager,v 1.8 2003-09-10 16:06:18-07 kst Exp $
+# $Id: throttle-job-manager,v 1.9 2003-09-10 16:13:13-07 kst Exp $
 # $Source: /home/kst/CVS_smov/tools/throttle-job-manager/throttle-job-manager,v $
 
 ########################################################################
@@ -62,7 +62,7 @@ sub Handler($);
 $| = 1;
 
 my $Signal = undef;
-$SIG{USR1} = \&Handler;
+$SIG{HUP} = \&Handler;
 
 my $Program_Name = File::Basename::basename $0;
 
