@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# $Id: throttle-job-manager,v 1.16 2003-09-11 16:36:08-07 kst Exp $
+# $Id: throttle-job-manager,v 1.17 2003-09-11 17:11:20-07 kst Exp $
 # $Source: /home/kst/CVS_smov/tools/throttle-job-manager/throttle-job-manager,v $
 
 ########################################################################
@@ -56,6 +56,7 @@ use Getopt::Long ();
 sub Get_Processes($);
 sub Usage(@);
 sub Qprint(@);
+sub Sleep($);
 sub Debug(@);
 sub Handler($);
 
@@ -128,9 +129,7 @@ Debug "pattern = $pattern\n";
 my $Proc = {};
 
 #
-# On a SIGHUP, dump the contents of the $Proc data structure.  (It turns
-# out that SIGHUP also interrupts the sleep, which affects the behavior
-# of the program; I may think about fixing this.)
+# On a SIGHUP, dump the contents of the $Proc data structure.
 #
 
 #
@@ -138,7 +137,7 @@ my $Signal = undef;
 $SIG{HUP} = \&Handler;
 
 while (1) {
-    sleep $User_Opt->{interval} - time % $User_Opt->{interval};
+    Sleep $User_Opt->{interval} - time % $User_Opt->{interval};
     my $processes = Get_Processes $pattern;
 
     #
@@ -329,6 +328,25 @@ sub Handler($) {
 sub Qprint(@) {
     print @_ if not $User_Opt->{quiet};
 } # Qprint
+
+# ----------------------------------------------------------------------
+
+#
+# A sleep call can be interrupted by a signal.  It returns the number
+# of seconds actually slept.
+#
+# Since we want to sleep for the specified number of seconds even if we
+# handle a SIGHUP, go back to sleep until it's time to wake up.
+#
+sub Sleep($) {
+    my $requested_seconds = $_[0];
+    my $seconds = $requested_seconds;
+    my $target_time = time + $seconds;
+    while (sleep $seconds != $seconds) {
+        $seconds = $target_time - time;
+    }
+    return $requested_seconds;
+} # Sleep
 
 # ----------------------------------------------------------------------
 
