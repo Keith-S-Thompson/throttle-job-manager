@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# $Id: throttle-job-manager,v 1.4 2003-09-09 00:48:43-07 kst Exp $
+# $Id: throttle-job-manager,v 1.5 2003-09-09 16:11:20-07 kst Exp $
 # $Source: /home/kst/CVS_smov/tools/throttle-job-manager/throttle-job-manager,v $
 
 use strict;
@@ -70,6 +70,8 @@ while (1) {
         delete $Proc->{$pid};
     }
 
+    print "time: ", time, "\n";
+    print "updates: ";
     #
     # Update $Proc
     #
@@ -78,18 +80,20 @@ while (1) {
         my $new_state = $processes->{$pid};
         $Proc->{$pid}->{state} = $new_state;
         if (not defined $old_state) {
-            print "$pid --> $new_state\n";
+            print "$pid --> $new_state ";
             #
             # New process; set start_time to now.
             #
             $Proc->{$pid}->{start_time} = time;
         }
         elsif ($old_state ne $new_state) {
-            print "$pid $old_state --> $new_state\n";
+            print "$pid $old_state --> $new_state ";
         }
     }
+    print "\n";
 
     my @sorted_processes = sort By_Runnability keys %$processes;
+    print "status: ";
     foreach my $pid (@sorted_processes) {
         print "$pid $Proc->{$pid}->{state} ";
     }
@@ -117,10 +121,15 @@ while (1) {
             }
         }
     }
-    Debug "kill -STOP @stop_targets\n";
-    kill 'STOP', @stop_targets;
-    Debug "kill -CONT @cont_targets\n";
-    kill 'CONT', @cont_targets;
+    if (@stop_targets) {
+	print "kill -STOP @stop_targets\n";
+	kill 'STOP', @stop_targets;
+    }
+    if (@cont_targets) {
+	print "kill -CONT @cont_targets\n";
+	kill 'CONT', @cont_targets;
+    }
+    print "\n";
 }
 
 ########################################################################
