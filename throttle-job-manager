@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# $Id: throttle-job-manager,v 1.11 2003-09-10 16:23:51-07 kst Exp $
+# $Id: throttle-job-manager,v 1.12 2003-09-11 15:51:25-07 kst Exp $
 # $Source: /home/kst/CVS_smov/tools/throttle-job-manager/throttle-job-manager,v $
 
 ########################################################################
@@ -61,13 +61,7 @@ sub Handler($);
 
 $| = 1;
 
-my $Signal = undef;
-$SIG{HUP} = \&Handler;
-
 my $Program_Name = File::Basename::basename $0;
-
-die "$Program_Name: No directory /proc\n" if not -d "/proc";
-die "$Program_Name: No Linux-style /proc directory\n" if not -e "/proc/$$/stat";
 
 my $User_Opt = { max      => 10,
                  interval => 60,
@@ -75,6 +69,9 @@ my $User_Opt = { max      => 10,
 my @Opts = ( $User_Opt, qw( help max=i interval=i quiet! debugging ) );
 Getopt::Long::GetOptions @Opts or Usage;
 Usage if $User_Opt->{help};
+
+die "$Program_Name: No directory /proc\n" if not -d "/proc";
+die "$Program_Name: No Linux-style /proc directory\n" if not -e "/proc/$$/stat";
 
 Debug "max  = $User_Opt->{max}\n";
 Debug "name = $User_Opt->{name}\n";
@@ -117,6 +114,16 @@ Debug "pattern = $pattern\n";
 #                 New processes are ignored.
 #
 my $Proc = {};
+
+#
+# On a SIGHUP, dump the contents of the $Proc data structure.  (It turns
+# out that SIGHUP also interrupts the sleep, which affects the behavior
+# of the program; I may think about fixing this.)
+#
+
+#
+my $Signal = undef;
+$SIG{HUP} = \&Handler;
 
 while (1) {
     sleep $User_Opt->{interval} - time % $User_Opt->{interval};
