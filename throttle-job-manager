@@ -1,0 +1,37 @@
+#!/usr/bin/perl -w
+
+# $Id: throttle-job-manager,v 1.1 2003-09-02 18:13:45-07 kst Exp $
+# $Source: /home/kst/CVS_smov/tools/throttle-job-manager/throttle-job-manager,v $
+
+use strict;
+
+sub Get_Processes($);
+
+my @pids = Get_Processes '/globus-job-manager$';
+
+print "pids = ( @pids )\n";
+
+########################################################################
+
+sub Get_Processes($) {
+    my($exe_pat) = @_;
+
+    #
+    # Compile the regexp if this version of Perl supports it.
+    #
+    eval '$exe_pat = qr/$exe_pat/';
+
+    opendir PROC, '/proc' or die "/proc: $!\n";
+    my @pids = sort { $a <=> $b } grep /^\d+$/, readdir PROC;
+    closedir PROC;
+
+    my @result = ();
+    foreach my $pid (@pids) {
+	my $exe = readlink "/proc/$pid/exe";
+	next if not defined $exe;
+	if ($exe =~ /$exe_pat/) {
+	    push @result, $pid;
+	}
+    }
+    return @result;
+} # Get_Processes
