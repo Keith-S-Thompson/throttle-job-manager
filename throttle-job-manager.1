@@ -1,7 +1,7 @@
 .\"
 .\" Man page for throttle-job-manager command, by Keith Thompson, kst@sdsc.edu
 .\"
-.\" $Id: throttle-job-manager.1,v 1.1 2003-09-11 17:12:11-07 kst Exp $
+.\" $Id: throttle-job-manager.1,v 1.2 2003-09-11 17:15:34-07 kst Exp $
 .\" $Source: /home/kst/CVS_smov/tools/throttle-job-manager/throttle-job-manager.1,v $
 .\"
 .\" @Copyright@
@@ -154,37 +154,6 @@ processes are not signalled; this avoids a race condition when a
 .I globus-job-manager
 processes forks and execs to run another program.
 
-.SH POSSIBLE ENHANCEMENTS
-
-Desirable enhancements might include:
-
-.RS 5
-
-Recognizing when a request is made from a remote system via
-.I globus-job-status
-or
-.I globus-job-get-output 
-and allowing the corresponding
-.I globus-job-manager
-process to run long enough to handle the request.
-
-Associating a given
-.I globus-job-manager
-process with the corresponding batch job, and allowing the
-.I globus-job-manager
-process to run as needed when the batch job changes state.
-
-Giving a higher priority to
-.I globus-job-manager
-processes associated with jobs submitted to the "fork" service, for
-which the user is likely to expect quicker response.
-
-.RE
-
-All these enhancements are beyond the current scope of the
-.I throttle-job-manager
-tool.
-
 .SH OPTIONS
 .I throttle-job-manager
 uses Perl's
@@ -217,6 +186,43 @@ Disable status messages.
 
 .IP -debugging
 Enable debugging output.
+
+.SH POSSIBLE ENHANCEMENTS
+
+Desirable enhancements might include:
+
+.RS 5
+
+Recognizing when a request is made from a remote system via
+.I globus-job-status
+or
+.I globus-job-get-output 
+and allowing the corresponding
+.I globus-job-manager
+process to run long enough to handle the request.
+
+Associating a given
+.I globus-job-manager
+process with the corresponding batch job, and allowing the
+.I globus-job-manager
+process to run as needed when the batch job changes state.
+
+Giving a higher priority to
+.I globus-job-manager
+processes associated with jobs submitted to the "fork" service, for
+which the user is likely to expect quicker response.
+
+.RE
+
+All these enhancements are beyond the current scope of the
+.I throttle-job-manager
+tool.
+
+.SH BUGS
+Running more than one instance of
+.I throttle-job-manager
+on a system can cause unpredictable results.  The command does not
+currently check for another running instance.
 
 .SH AUTHOR
 Keith Thompson, San Diego Supercomputer Center, kst@sdsc.edu
