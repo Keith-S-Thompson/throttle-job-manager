@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# $Id: throttle-job-manager,v 1.12 2003-09-11 15:51:25-07 kst Exp $
+# $Id: throttle-job-manager,v 1.13 2003-09-11 16:14:24-07 kst Exp $
 # $Source: /home/kst/CVS_smov/tools/throttle-job-manager/throttle-job-manager,v $
 
 ########################################################################
@@ -77,6 +77,9 @@ Debug "max  = $User_Opt->{max}\n";
 Debug "name = $User_Opt->{name}\n";
 
 my $pattern = "/\Q$User_Opt->{name}\E\$";
+#
+# Compile the regexp if this version of Perl supports it.
+#
 eval '$pattern = qr/$pattern/';
 Debug "pattern = $pattern\n";
 
@@ -283,36 +286,25 @@ sub By_Runnability {
     my $a_stopped = ( $Proc->{$a}->{state} eq 'T' ? 1 : 0 );
     my $b_stopped = ( $Proc->{$b}->{state} eq 'T' ? 1 : 0 );
 
-#   Debug "By_Runnability comparing $a ",
-#         $a_stopped ? "stopped" : "not stopped",
-#         " vs. $b ",
-#         $b_stopped ? "stopped" : "not stopped",
-#         "\n";
-
     if ($a_stopped and not $b_stopped) {
-#       Debug "return 1\n";
         return 1;
     }
     elsif (not $a_stopped and $b_stopped) {
-#       Debug "return -1\n";
         return -1;
     }
     elsif ($a_stopped and defined $Proc->{$a}->{stop_time} and
            $b_stopped and defined $Proc->{$b}->{stop_time})
     {
-#       Debug "Comparing stop_time, then PID\n";
         return $Proc->{$b}->{stop_time} <=> $Proc->{$a}->{stop_time} ||
                $a <=> $b
     }
     elsif (not $a_stopped and defined $Proc->{$a}->{start_time} and
            not $b_stopped and defined $Proc->{$b}->{start_time})
     {
-#       Debug "Comparing start_time, then PID\n";
         return $Proc->{$a}->{start_time} <=> $Proc->{$b}->{start_time} ||
                $a <=> $b;
     }
     else {
-#       Debug "Comparing PID\n";
         return $a <=> $b;
     }
 } # By_Runnability 
