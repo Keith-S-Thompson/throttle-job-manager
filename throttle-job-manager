@@ -1,37 +1,187 @@
 #!/usr/bin/perl -w
 
-# $Id: throttle-job-manager,v 1.1 2003-09-02 18:13:45-07 kst Exp $
+# $Id: throttle-job-manager,v 1.2 2003-09-05 20:32:39-07 kst Exp $
 # $Source: /home/kst/CVS_smov/tools/throttle-job-manager/throttle-job-manager,v $
 
 use strict;
 
+use File::Basename ();
+use Getopt::Long ();
+
 sub Get_Processes($);
+sub Usage(@);
+sub Debug(@);
 
-my @pids = Get_Processes '/globus-job-manager$';
+my $Program_Name = File::Basename::basename $0;
 
-print "pids = ( @pids )\n";
+die "$Program_Name: No directory /proc\n" if not -d "/proc";
+die "$Program_Name: No Linux-style /proc directory\n" if not -e "/proc/$$/stat";
+
+my $User_Opt = { max      => 10,
+                 interval => 60,
+                 name     => 'globus-job-manager' };
+my @Opts = ( $User_Opt, qw( help max=i interval=i debugging ) );
+Getopt::Long::GetOptions @Opts or Usage;
+Usage if $User_Opt->{help};
+
+Debug "max  = $User_Opt->{max}\n";
+Debug "name = $User_Opt->{name}\n";
+
+my $pattern = "/\Q$User_Opt->{name}\E\$";
+eval '$pattern = qr/$pattern/';
+Debug "pattern = $pattern\n";
+
+#
+# $Proc is a reference to a hash keyed by PIDs, containing information
+# about all known globus-job-manager processes.
+#
+# Each value is a hash reference with the following fields:
+#     pid         The numeric process id (redundant with the key).
+#     state       One character from the string "RSDZTW" where R is
+#                 running,  S is sleeping in an interruptible wait,
+#                 D is waiting in uninterruptible disk sleep, Z  is
+#                 zombie, T is traced or stopped (on a signal), and
+#                 W is paging.  (Wording stolen from proc(5) man page.)
+#     stop_time   A timestamp indicating when we last sent the process a
+#                 STOP signal; not defined if the process is not currently
+#                 stopped.
+#     start_time  A timestamp indicating when we last sent the process a
+#                 CONT signal; not defined if the process is currently
+#                 stopped, or if we've never stopped it.
+#
+my $Proc = {};
+
+while (1) {
+    sleep $User_Opt->{interval} - time % $User_Opt->{interval};
+    my $processes = Get_Processes $pattern;
+
+    #
+    # Delete nonexistent processes from $Proc
+    #
+    my @dead = ();
+    foreach my $pid (keys %$Proc) {
+        push @dead, $pid if not defined $processes->{$pid};
+    }
+    foreach my $pid (@dead) {
+        delete $Proc->{$pid};
+    }
+
+    #
+    # Blah blah blah
+    #
+
+    #
+    # Update $Proc
+    #
+    foreach my $pid (keys %$processes) {
+        my $old_state = $Proc->{$pid}->{state};
+        my $new_state = $processes->{$pid};
+        $Proc->{$pid}->{state} = $new_state;
+        if (not defined $old_state) {
+            print "$pid --> $new_state\n";
+        }
+        elsif ($old_state ne $new_state) {
+            print "$pid $old_state --> $new_state\n";
+        }
+    }
+
+    foreach my $pid (sort By_Runnability keys %$processes) {
+        print "$pid $processes->{$pid} ";
+    }
+    print "\n";
+}
 
 ########################################################################
 
+#
+# Returns a reference to a hash, keyed by pids.
+# Hash values are the "state", as defined above.
+#
 sub Get_Processes($) {
     my($exe_pat) = @_;
 
     #
-    # Compile the regexp if this version of Perl supports it.
+    # Get a list of all current processes
     #
-    eval '$exe_pat = qr/$exe_pat/';
-
     opendir PROC, '/proc' or die "/proc: $!\n";
     my @pids = sort { $a <=> $b } grep /^\d+$/, readdir PROC;
     closedir PROC;
 
-    my @result = ();
+    my $result = {};
+    PROCESS:
     foreach my $pid (@pids) {
-	my $exe = readlink "/proc/$pid/exe";
-	next if not defined $exe;
-	if ($exe =~ /$exe_pat/) {
-	    push @result, $pid;
-	}
+        my $exe = readlink "/proc/$pid/exe";
+        next if not defined $exe;
+        next if $exe !~ /$exe_pat/;
+
+        open STAT, "/proc/$pid/stat" or next PROCESS;
+        my $line = <STAT>;
+        close STAT;
+        my ($state) = ($line =~ /^\d+ \(.*\) (.)/);
+        $result->{$pid} = $state;
     }
-    return @result;
+    return $result;
 } # Get_Processes
+
+# ----------------------------------------------------------------------
+
+#
+# Compare processes $a and $b for "runnability".  Processes with the
+# lowest runnability are candidates for being sent a STOP signal (or
+# not being sent a CONT signal if they're already stopped).
+#
+# First, procesess that are currently stopped are more runnable than
+# processes that are currently running.
+#
+# Second, if two processes are both stopped, the one has been stopped for
+# the longest time is more runnable; or if two processes are both running,
+# the one that has been running for the longest time is *less* runnable.
+#
+# Third, punt and compare the numeric PIDs.
+# 
+sub By_Runnability {
+    my $a_stopped = ( $Proc->{$a}->{state} eq 'T' ? 1 : 0 );
+    my $b_stopped = ( $Proc->{$b}->{state} eq 'T' ? 1 : 0 );
+
+    if ($a_stopped and not $b_stopped) {
+        return 1;
+    }
+    elsif (not $a_stopped and $b_stopped) {
+        return -1;
+    }
+    elsif ($a_stopped and defined $Proc->{$a}->{stop_time} and
+           $b_stopped and defined $Proc->{$b}->{stop_time})
+    {
+        return $Proc->{$b}->{stop_time} <=> $Proc->{$a}->{stop_time};
+    }
+    elsif (not $a_stopped and defined $Proc->{$a}->{start_time} and
+           not $b_stopped and defined $Proc->{$b}->{start_time})
+    {
+        return $Proc->{$a}->{started} <=> $Proc->{$b}->{started};
+    }
+    else {
+        return $a <=> $b;
+    }
+} # By_Runnability 
+
+# ----------------------------------------------------------------------
+
+sub Debug(@) {
+    print @_ if $User_Opt->{debugging};
+} # Debug
+
+# ----------------------------------------------------------------------
+
+sub Usage(@) {
+    print @_ if @_;
+    print <<"EOF";
+Usage: $Program_Name [options]
+    -help               Display this message and exit
+    -max num            Maximum number of running processes; default is 10
+    -interval seconds   Seconds between queries; default is 60
+    -name string        Name of executable to throttle;
+                        default is "globus-job-manager"
+    -debugging          Enable debugging output
+EOF
+    exit 1;
+} # Usage
