@@ -1,6 +1,6 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl -wT
 
-# $Id: throttle-job-manager,v 1.20 2003-09-15 16:21:01-07 kst Exp $
+# $Id: throttle-job-manager,v 1.21 2003-09-15 16:30:54-07 kst Exp $
 # $Source: /home/kst/CVS_smov/tools/throttle-job-manager/throttle-job-manager,v $
 
 ########################################################################
