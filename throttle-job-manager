@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# $Id: throttle-job-manager,v 1.2 2003-09-05 20:32:39-07 kst Exp $
+# $Id: throttle-job-manager,v 1.3 2003-09-08 23:32:56-07 kst Exp $
 # $Source: /home/kst/CVS_smov/tools/throttle-job-manager/throttle-job-manager,v $
 
 use strict;
@@ -56,7 +56,9 @@ while (1) {
     my $processes = Get_Processes $pattern;
 
     #
-    # Delete nonexistent processes from $Proc
+    # Delete nonexistent processes from $Proc.
+    # (I'm not sure whether it's safe to delete elements within a foreach,
+    # so first build the list, then delete the elements.)
     #
     my @dead = ();
     foreach my $pid (keys %$Proc) {
@@ -67,10 +69,6 @@ while (1) {
     }
 
     #
-    # Blah blah blah
-    #
-
-    #
     # Update $Proc
     #
     foreach my $pid (keys %$processes) {
@@ -79,16 +77,48 @@ while (1) {
         $Proc->{$pid}->{state} = $new_state;
         if (not defined $old_state) {
             print "$pid --> $new_state\n";
+            #
+            # New process; set start_time to now.
+            #
+            $Proc->{$pid}->{start_time} = time;
         }
         elsif ($old_state ne $new_state) {
             print "$pid $old_state --> $new_state\n";
         }
     }
 
-    foreach my $pid (sort By_Runnability keys %$processes) {
-        print "$pid $processes->{$pid} ";
+    my @sorted_processes = sort By_Runnability keys %$processes;
+    foreach my $pid (@sorted_processes) {
+        print "$pid $Proc->{$pid}->{state} ";
     }
     print "\n";
+    my @stop_targets = ();
+    my @cont_targets = ();
+    for (my $i = 0; $i <= $#sorted_processes; $i ++) {
+        my $pid = $sorted_processes[$i];
+        if ($#sorted_processes - $i < $User_Opt->{max}) {
+            #
+            # If it's stopped, restart it.
+            #
+            if ($Proc->{$pid}->{state} eq 'T') {
+                push @cont_targets, $pid;
+                $Proc->{$pid}->{start_time} = time;
+            }
+        }
+        else {
+            #
+            # If it's running, stop it.
+            #
+            if ($Proc->{$pid}->{state} ne 'T') {
+                push @stop_targets, $pid;
+                $Proc->{$pid}->{stop_time} = time;
+            }
+        }
+    }
+    Debug "kill -STOP @stop_targets\n";
+    kill 'STOP', @stop_targets;
+    Debug "kill -CONT @cont_targets\n";
+    kill 'CONT', @cont_targets;
 }
 
 ########################################################################
@@ -130,8 +160,8 @@ sub Get_Processes($) {
 # lowest runnability are candidates for being sent a STOP signal (or
 # not being sent a CONT signal if they're already stopped).
 #
-# First, procesess that are currently stopped are more runnable than
-# processes that are currently running.
+# First, procesess that are currently stopped (state 'T') are more
+# runnable than processes that are not currently stopped.
 #
 # Second, if two processes are both stopped, the one has been stopped for
 # the longest time is more runnable; or if two processes are both running,
@@ -143,23 +173,36 @@ sub By_Runnability {
     my $a_stopped = ( $Proc->{$a}->{state} eq 'T' ? 1 : 0 );
     my $b_stopped = ( $Proc->{$b}->{state} eq 'T' ? 1 : 0 );
 
+#   Debug "By_Runnability comparing $a ",
+#         $a_stopped ? "stopped" : "not stopped",
+#         " vs. $b ",
+#         $b_stopped ? "stopped" : "not stopped",
+#         "\n";
+
     if ($a_stopped and not $b_stopped) {
+#       Debug "return 1\n";
         return 1;
     }
     elsif (not $a_stopped and $b_stopped) {
+#       Debug "return -1\n";
         return -1;
     }
     elsif ($a_stopped and defined $Proc->{$a}->{stop_time} and
            $b_stopped and defined $Proc->{$b}->{stop_time})
     {
-        return $Proc->{$b}->{stop_time} <=> $Proc->{$a}->{stop_time};
+#       Debug "Comparing stop_time, then PID\n";
+        return $Proc->{$b}->{stop_time} <=> $Proc->{$a}->{stop_time} ||
+               $a <=> $b
     }
     elsif (not $a_stopped and defined $Proc->{$a}->{start_time} and
            not $b_stopped and defined $Proc->{$b}->{start_time})
     {
-        return $Proc->{$a}->{started} <=> $Proc->{$b}->{started};
+#       Debug "Comparing start_time, then PID\n";
+        return $Proc->{$a}->{start_time} <=> $Proc->{$b}->{start_time} ||
+               $a <=> $b;
     }
     else {
+#       Debug "Comparing PID\n";
         return $a <=> $b;
     }
 } # By_Runnability 
