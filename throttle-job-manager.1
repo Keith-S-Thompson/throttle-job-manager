@@ -1,0 +1,222 @@
+.\"
+.\" Man page for throttle-job-manager command, by Keith Thompson, kst@sdsc.edu
+.\"
+.\" $Id: throttle-job-manager.1,v 1.1 2003-09-11 17:12:11-07 kst Exp $
+.\" $Source: /home/kst/CVS_smov/tools/throttle-job-manager/throttle-job-manager.1,v $
+.\"
+.\" @Copyright@
+.\" 
+.\" Copyright (c) 2003 The Regents of the University of California. All
+.\" rights reserved.
+.\" 
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions are
+.\" met:
+.\" 
+.\" 1. Redistributions of source code must retain the above copyright
+.\" notice, this list of conditions and the following disclaimer.
+.\" 
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\" notice, this list of conditions and the following disclaimer in the
+.\" documentation and/or other materials provided with the distribution.
+.\" 
+.\" 3. All advertising materials mentioning features or use of this
+.\" software must display the following acknowledgement: This product
+.\" includes software developed by the Grid and Cluster Computing Group
+.\" at the San Diego Supercomputer Center and its contributors.
+.\" 
+.\" 4. Neither the name of the Center nor the names of its contributors
+.\" may be used to endorse or promote products derived from this software
+.\" without specific prior written permission.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS''
+.\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+.\" THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+.\" PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS
+.\" BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+.\" BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+.\" WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+.\" OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+.\" IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\" 
+.\" @Copyright@
+.\" 
+.TH THROTTLE-JOB-MANAGER 1 2003-09-11 SDSC
+.SH NAME
+throttle-job-manager \- Throttle globus-job-manager processes
+.SH SYNOPSIS
+.B "throttle-job-manager -help"
+.br
+.B "throttle-job-manager [options]"
+
+.SH VERSION
+.\"
+.\" The layout of the following line is significant; see make-release.
+.\"
+This documentation is for release 0.1 of
+.IR throttle-job-manager .
+
+.SH DESCRIPTION
+The
+.I throttle-job-manager
+command works around a Globus performance problem by allowing only a
+specified number of
+.I globus-job-manager
+processes to run simultaneously.  The
+.I throttle-job-manager
+command must be executed from the root account.  It works only on
+systems with a Linux-style
+.I /proc
+virtual filesystem.
+
+.SH BACKGROUND
+Under Globus 2.X, each submitted Globus job results in a
+.I globus-job-manager
+process running on the target resource.  This process runs continuously
+until the job completes -- even if the job is pending in a batch
+queue system for days before it runs.
+
+If a large number of jobs have been submitted to a given resource,
+the resulting
+.I globus-job-manager
+processes can create a significant burden on the system.  In some
+tests, I've seen load averages approaching 100; in other cases,
+systems have apparently crashed.
+
+This problem has been reported (see
+.IR <http://bugzilla.globus.org/bugzilla/show_bug.cgi?id=1142> )
+but will not be fixed until Globus 3.X.
+
+I've been told that Condor-G works around this by, among other things,
+sending STOP signals to
+.I globus-job-manager
+processes, reducing the load on the system.  The
+.I throttle-job-manager
+command is based on this idea.  It's a relatively simple brute-force
+approach.  It periodically sends STOP and CONT signals to any
+.I globus-job-manager
+processes on the system, limiting the number of active processes to
+a specified number (10 by default).
+
+.SH OPERATION
+The
+.I throttle-job-manager
+command runs in an infinite loop, waking up every
+.I interval
+seconds to check for running
+.I globus-job-manager
+processes and send them STOP or CONT signals.  A STOP signal
+causes a process to be suspended (like hitting control-Z for an
+interactive program); a CONT signal restarts it.
+
+It attempts to let each
+.I globus-job-manager
+process run a "fair" percentage of the time.  For example, if there
+are 100
+.I globus-job-manager
+processes, and
+.I throttle-job-manager
+is running with
+.I max
+and
+.I interval
+set to their default values, each
+.I globus-job-manager
+process should get to run for about 1 minute every 10 minutes.  The
+various
+.I globus-job-manager
+processes are staggered, so at most 10 will be active at any moment.
+
+The drawback, of course, is that 
+.I globus-job-manager
+won't be running all the time.  An attempt to get the status or output
+of a job by running
+.I globus-job-status
+or
+.I globus-job-get-output
+will hang until the corresponding
+.I globus-job-manager
+process is allowed to run.  If Globus is configured to report job
+status to the MDS, this may be delayed.  This may be alleviated
+by running
+.I throttle-job-manager
+with a shorter interval, allowing each
+.I globus-job-manager
+process to run more often.  I've tried 10 seconds with reasonable results.
+
+I don't (currently) know of any side effects other than these delays.
+
+Newly seen
+.I globus-job-manager
+processes are not signalled; this avoids a race condition when a
+.I globus-job-manager
+processes forks and execs to run another program.
+
+.SH POSSIBLE ENHANCEMENTS
+
+Desirable enhancements might include:
+
+.RS 5
+
+Recognizing when a request is made from a remote system via
+.I globus-job-status
+or
+.I globus-job-get-output 
+and allowing the corresponding
+.I globus-job-manager
+process to run long enough to handle the request.
+
+Associating a given
+.I globus-job-manager
+process with the corresponding batch job, and allowing the
+.I globus-job-manager
+process to run as needed when the batch job changes state.
+
+Giving a higher priority to
+.I globus-job-manager
+processes associated with jobs submitted to the "fork" service, for
+which the user is likely to expect quicker response.
+
+.RE
+
+All these enhancements are beyond the current scope of the
+.I throttle-job-manager
+tool.
+
+.SH OPTIONS
+.I throttle-job-manager
+uses Perl's
+.I Getop::Long
+module to parse its command-line arguments.
+.br
+Options may be prefixed with either "-" or "--".
+.br
+Option names may be abbreviated uniquely.
+
+.IP -help
+Display a brief help message on stdout and exit.
+
+.IP -version
+Display version information and exit.
+
+.IP "-max num"
+Maximum number of running
+.I globus-job-manager
+processes.  Default is 10.
+
+.IP "-interval seconds"
+Interval between checks.  Default is 60.
+
+.IP "-name string"
+Name of executable to throttle.  Default is "globus-job-manager".
+
+.IP -quiet
+Disable status messages.
+
+.IP -debugging
+Enable debugging output.
+
+.SH AUTHOR
+Keith Thompson, San Diego Supercomputer Center, kst@sdsc.edu
