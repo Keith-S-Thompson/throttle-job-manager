@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# $Id: throttle-job-manager,v 1.9 2003-09-10 16:13:13-07 kst Exp $
+# $Id: throttle-job-manager,v 1.10 2003-09-10 16:22:05-07 kst Exp $
 # $Source: /home/kst/CVS_smov/tools/throttle-job-manager/throttle-job-manager,v $
 
 ########################################################################
@@ -147,9 +147,15 @@ while (1) {
         if (not defined $old_state) {
             Qprint "$pid --> $new_state ";
             #
-            # New process; set start_time to now.
+	    # New process; set start_time or stop_time to now (stop_time
+	    # if it's already stopped).
             #
-            $Proc->{$pid}->{start_time} = time;
+	    if ($new_state eq 'T') {
+		$Proc->{$pid}->{stop_time} = time;
+	    }
+	    else {
+		$Proc->{$pid}->{start_time} = time;
+	    }
             $Proc->{$pid}->{is_new} = 1;
         }
         else {
