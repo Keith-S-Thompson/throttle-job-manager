@@ -1,7 +1,7 @@
-# $Id: README,v 1.4 2003-09-15 16:17:20-07 kst Exp $
+# $Id: README,v 1.5 2003-09-15 16:50:18-07 kst Exp $
 # $Source: /home/kst/CVS_smov/tools/throttle-job-manager/README,v $
 
-This is throttle-job-manager release 0.1.
+This is throttle-job-manager release 0.2.
 
 The throttle-job-manager command is a Perl script that works around
 a Globus performance problem by throttling the number of active
@@ -17,3 +17,8 @@ appropriate directory, adjust the "#!/usr/bin/perl" line if necessary
 to reflect the location of your Perl executable, and run it as root.
 
 "throttle-job-manager.1" is the man page.
+
+Since it's run only by root, it should probably be installed in
+an "sbin" directory rather than a "bin" directory.  Similarly,
+the man page, "throttle-job-manager.1" should probably be called
+"throttle-job-manager.8" and installed in a man8 directory.
