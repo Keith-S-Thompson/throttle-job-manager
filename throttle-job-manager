@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# $Id: throttle-job-manager,v 1.19 2003-09-15 16:09:08-07 kst Exp $
+# $Id: throttle-job-manager,v 1.20 2003-09-15 16:21:01-07 kst Exp $
 # $Source: /home/kst/CVS_smov/tools/throttle-job-manager/throttle-job-manager,v $
 
 ########################################################################
@@ -62,7 +62,7 @@ sub Handler($);
 $| = 1;
 
 my $Program_Name = File::Basename::basename $0;
-my $Version = "0.1";
+my $Version = "0.2";
 
 my $User_Opt = { max      => 10,
                  interval => 60,
@@ -187,6 +187,18 @@ while (1) {
                 Qprint "$pid $old_state --> $new_state ";
             }
             delete $Proc->{$pid}->{is_new};
+            if ($new_state eq 'T') {
+                #
+                # It's stopped; no need for start_time
+                #
+                delete $Proc->{$pid}->{start_time};
+            }
+            else {
+                #
+                # It's not stopped; no need for stop_time
+                #
+                delete $Proc->{$pid}->{stop_time};
+            }
         }
     }
     Qprint "\n";
