@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# $Id: throttle-job-manager,v 1.13 2003-09-11 16:14:24-07 kst Exp $
+# $Id: throttle-job-manager,v 1.14 2003-09-11 16:23:53-07 kst Exp $
 # $Source: /home/kst/CVS_smov/tools/throttle-job-manager/throttle-job-manager,v $
 
 ########################################################################
@@ -72,6 +72,7 @@ Usage if $User_Opt->{help};
 
 die "$Program_Name: No directory /proc\n" if not -d "/proc";
 die "$Program_Name: No Linux-style /proc directory\n" if not -e "/proc/$$/stat";
+die "$Program_Name: Must run as root\n" if $< != 0;
 
 Debug "max  = $User_Opt->{max}\n";
 Debug "name = $User_Opt->{name}\n";
