@@ -1,4 +1,4 @@
-# $Id: README,v 1.1 2003-09-11 17:25:21-07 kst Exp $
+# $Id: README,v 1.2 2003-09-12 18:22:01-07 kst Exp $
 # $Source: /home/kst/CVS_smov/tools/throttle-job-manager/README,v $
 
 This is throttle-job-manager release 0.1.
@@ -17,3 +17,10 @@ appropriate directory, adjust the "#!/usr/bin/perl" line if necessary
 to reflect the location of your Perl executable, and run it as root.
 
 "throttle-job-manager.1" is the man page.
+
+************************************************************************
+* Note added after release 0.1:                                        *
+* There seems to be a bug in throttle-job-manager. I have an           *
+* instance of it using 90+% of the CPU time while not visibly doing    *
+* anything. Please don't try to use it until I track this down.        *
+************************************************************************
