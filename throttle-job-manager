@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# $Id: throttle-job-manager,v 1.5 2003-09-09 16:11:20-07 kst Exp $
+# $Id: throttle-job-manager,v 1.6 2003-09-10 00:52:45-07 kst Exp $
 # $Source: /home/kst/CVS_smov/tools/throttle-job-manager/throttle-job-manager,v $
 
 use strict;
@@ -34,6 +34,19 @@ eval '$pattern = qr/$pattern/';
 Debug "pattern = $pattern\n";
 
 #
+# One problem I ran into: a globus-job-manager process invokes another
+# program by the usual fork/exec.  The process forks, and we pick
+# up the child process before it execs (while it still shows up as a
+# globus-job-manager process).  We send it a STOP signal.  Next time
+# around, it's no longer a globus-job-manager process, so we ignore
+# it, and we never send it a CONT signal.
+#
+# Solution: Set the is_new attribute and ignore processes the first
+# time we see them.  (This could also allow short-running job managers
+# to complete.)
+#
+
+#
 # $Proc is a reference to a hash keyed by PIDs, containing information
 # about all known globus-job-manager processes.
 #
@@ -50,6 +63,8 @@ Debug "pattern = $pattern\n";
 #     start_time  A timestamp indicating when we last sent the process a
 #                 CONT signal; not defined if the process is currently
 #                 stopped, or if we've never stopped it.
+#     is_new      True if this is the first time we've seen this process.
+#                 New processes are ignored.
 #
 my $Proc = {};
 
@@ -85,9 +100,13 @@ while (1) {
             # New process; set start_time to now.
             #
             $Proc->{$pid}->{start_time} = time;
+            $Proc->{$pid}->{is_new} = 1;
         }
-        elsif ($old_state ne $new_state) {
-            print "$pid $old_state --> $new_state ";
+        else {
+            if ($old_state ne $new_state) {
+                print "$pid $old_state --> $new_state ";
+            }
+            delete $Proc->{$pid}->{is_new};
         }
     }
     print "\n";
@@ -102,6 +121,7 @@ while (1) {
     my @cont_targets = ();
     for (my $i = 0; $i <= $#sorted_processes; $i ++) {
         my $pid = $sorted_processes[$i];
+        next if $Proc->{$pid}->{is_new};
         if ($#sorted_processes - $i < $User_Opt->{max}) {
             #
             # If it's stopped, restart it.
@@ -122,12 +142,12 @@ while (1) {
         }
     }
     if (@stop_targets) {
-	print "kill -STOP @stop_targets\n";
-	kill 'STOP', @stop_targets;
+        print "kill -STOP @stop_targets\n";
+        kill 'STOP', @stop_targets;
     }
     if (@cont_targets) {
-	print "kill -CONT @cont_targets\n";
-	kill 'CONT', @cont_targets;
+        print "kill -CONT @cont_targets\n";
+        kill 'CONT', @cont_targets;
     }
     print "\n";
 }
