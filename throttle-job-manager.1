@@ -1,7 +1,7 @@
 .\"
 .\" Man page for throttle-job-manager command, by Keith Thompson, kst@sdsc.edu
 .\"
-.\" $Id: throttle-job-manager.1,v 1.2 2003-09-11 17:15:34-07 kst Exp $
+.\" $Id: throttle-job-manager.1,v 1.3 2003-09-14 23:20:32-07 kst Exp $
 .\" $Source: /home/kst/CVS_smov/tools/throttle-job-manager/throttle-job-manager.1,v $
 .\"
 .\" @Copyright@
@@ -153,6 +153,14 @@ Newly seen
 processes are not signalled; this avoids a race condition when a
 .I globus-job-manager
 processes forks and execs to run another program.
+
+Sending a
+.B SIGHUP
+signal to
+.I throttle-job-manager
+causes it to dump its internal data structure to stdout.  (It also
+interrupts the current call to sleep(), so it does affect the behavior
+of the program.)
 
 .SH OPTIONS
 .I throttle-job-manager
